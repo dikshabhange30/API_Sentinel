@@ -14,3 +14,17 @@ class APIRequestCreate(BaseModel):
 class APIRequestResponse(BaseModel):
     id: int
     message: str
+
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+
+
+

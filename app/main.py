@@ -1,10 +1,23 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
+from app.oauth2 import create_access_token, get_current_user
+
 from sqlalchemy.orm import Session
 
 from app.database import engine, Base, get_db
-from app.models import APIRequest
-from app.schemas import APIRequestCreate, APIRequestResponse
+from app.models import APIRequest, User
+from app.schemas import (
+    APIRequestCreate,
+    APIRequestResponse,
+    UserCreate,
+    UserResponse
+    
+)
+from app.auth import hash_password, verify_password
 
+# bcrypt/Passlib → password hashing
+# python-jose    → JWT creation/verification
+# OAuth2PasswordBearer → extract Bearer token from requests
 
 Base.metadata.create_all(bind=engine)
 
@@ -46,4 +59,67 @@ def create_api_request(
         "id": new_request.id
     }
 
-# Swagger ->JSON request ->Pydantic validates it ->APIRequest SQLAlchemy object ->db.add() -> db.commit() -> PostgreSQL
+
+@app.post("/users", response_model=UserResponse)
+def create_user(
+    user: UserCreate,
+    db: Session = Depends(get_db)
+):
+    existing_user = db.query(User).filter((User.username == user.username) | (User.email == user.email)).first()
+
+    if existing_user:
+        raise HTTPException( status_code=400, detail="Username or email already exists")
+    
+    hashed_password = hash_password(user.password)
+
+    new_user = User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
+
+@app.post("/login")
+def login_user(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    existing_user = db.query(User).filter(
+        User.username == form_data.username
+    ).first()
+
+    if not existing_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password"
+        )
+
+    password_is_valid = verify_password(
+        form_data.password,
+        existing_user.hashed_password
+    )
+
+    if not password_is_valid:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password"
+        )
+
+    access_token = create_access_token(
+    data={"sub": str(existing_user.id)})
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+@app.get("/users/me", response_model=UserResponse)
+def read_current_user(
+    current_user: User = Depends(get_current_user)
+):
+    return current_user
