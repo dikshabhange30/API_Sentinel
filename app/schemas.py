@@ -3,7 +3,6 @@ from datetime import datetime
 
 
 class APIRequestCreate(BaseModel):
-    user_id: int | None = None
     endpoint: str
     method: str
     timestamp: datetime

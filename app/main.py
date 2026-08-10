@@ -38,10 +38,11 @@ def test_api():
 @app.post("/api/requests", response_model=APIRequestResponse)
 def create_api_request(
     request: APIRequestCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     new_request = APIRequest(
-        user_id=request.user_id,
+        user_id=current_user.id,
         endpoint=request.endpoint,
         method=request.method,
         timestamp=request.timestamp,
@@ -55,10 +56,9 @@ def create_api_request(
     db.refresh(new_request)
 
     return {
-        "message": "API request saved successfully",
-        "id": new_request.id
+        "id": new_request.id,
+        "message": "API request saved successfully"
     }
-
 
 @app.post("/users", response_model=UserResponse)
 def create_user(
