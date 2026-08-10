@@ -18,4 +18,13 @@ SessionLocal = sessionmaker(
 
 Base = declarative_base()
 
-# DATABASE_URL -> engine -> SessionLocal -> Base
+def get_db():
+    db = SessionLocal()
+
+    try:
+        yield db
+    finally:
+        db.close()
+
+# why get_db?
+# API request -> get_db() -> Database session -> SQLAlchemy -> PostgreSQL
