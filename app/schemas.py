@@ -49,4 +49,6 @@ class APIAnalyticsResponse(BaseModel):
     average_response_time: float
     success_rate: float
     failure_rate: float
+    health_status: str
+    slow_requests: int
 

@@ -153,6 +153,20 @@ def get_api_analytics(
         APIRequest.status_code < 300
     ).count()
 
+    failed_requests = requests.filter(
+        APIRequest.status_code >= 400,
+        APIRequest.status_code < 600
+    ).count()
+
+    slow_requests = requests.filter(
+        APIRequest.response_time > 1000
+    ).count()
+
+
+    average_response_time = requests.with_entities(
+        func.avg(APIRequest.response_time)
+    ).scalar()
+
     if total_requests > 0:
         success_rate = (successful_requests / total_requests) * 100
     else:
@@ -163,22 +177,24 @@ def get_api_analytics(
     else:
         failure_rate = 0.0
 
-    failed_requests = requests.filter(
-        APIRequest.status_code >= 400,
-        APIRequest.status_code < 600
-    ).count()
-
-    average_response_time = requests.with_entities(
-        func.avg(APIRequest.response_time)
-    ).scalar()
+    if total_requests == 0:
+        health_status = "NO_DATA"
+    elif failure_rate < 5:
+        health_status = "HEALTHY"
+    elif failure_rate <= 10:
+        health_status = "WARNING"
+    else:
+        health_status = "CRITICAL"
 
     return {
-    "total_requests": total_requests,
-    "successful_requests": successful_requests,
-    "failed_requests": failed_requests,
-    "average_response_time": average_response_time or 0.0,
-    "success_rate": success_rate,
-    "failure_rate": failure_rate
+        "total_requests": total_requests,
+        "successful_requests": successful_requests,
+        "failed_requests": failed_requests,
+        "average_response_time": average_response_time or 0.0,
+        "success_rate": success_rate,
+        "failure_rate": failure_rate,
+        "health_status": health_status,
+        "slow_requests": slow_requests
     }
 
 
