@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.oauth2 import create_access_token, get_current_user
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.database import engine, Base, get_db
 from app.models import APIRequest, User
@@ -10,6 +11,7 @@ from app.schemas import (
     APIRequestCreate,
     APIRequestResponse,
     APIRequestListResponse,
+    APIAnalyticsResponse,
     UserCreate,
     UserResponse
     
@@ -114,6 +116,40 @@ def get_my_api_requests(
     "total": total,
     "data": requests
 }
+
+@app.get("/api/analytics", response_model=APIAnalyticsResponse)
+def get_api_analytics(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+    ):
+    requests = db.query(APIRequest).filter(
+        APIRequest.user_id == current_user.id
+    )
+
+    total_requests = requests.count()
+
+    successful_requests = requests.filter(
+        APIRequest.status_code >= 200,
+        APIRequest.status_code < 300
+    ).count()
+
+    failed_requests = requests.filter(
+        APIRequest.status_code >= 400,
+        APIRequest.status_code < 600
+    ).count()
+
+    average_response_time = requests.with_entities(
+        func.avg(APIRequest.response_time)
+    ).scalar()
+
+    return {
+    "total_requests": total_requests,
+    "successful_requests": successful_requests,
+    "failed_requests": failed_requests,
+    "average_response_time": average_response_time or 0.0
+    }
+
+
 
 @app.post("/users", response_model=UserResponse)
 def create_user(

@@ -42,3 +42,9 @@ class APIRequestListResponse(BaseModel):
     total: int
     data: list[APIRequestData]
 
+class APIAnalyticsResponse(BaseModel):
+    total_requests: int
+    successful_requests: int
+    failed_requests: int
+    average_response_time: float
+
