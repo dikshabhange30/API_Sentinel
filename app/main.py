@@ -66,12 +66,15 @@ def get_my_api_requests(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     sort: str = Query("latest"),
+    status_code: int | None = Query(None),
+    method: str | None = Query(None),
+    endpoint: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     skip = (page - 1) * limit
 
-    total = db.query(APIRequest).filter(APIRequest.user_id == current_user.id).count()
+    # total = db.query(APIRequest).filter(APIRequest.user_id == current_user.id).count()
 
     if sort == "latest":
         order = APIRequest.timestamp.desc()
@@ -83,7 +86,27 @@ def get_my_api_requests(
             detail="sort must be 'latest' or 'oldest'"
     )
 
-    requests = db.query(APIRequest).filter( APIRequest.user_id == current_user.id).order_by(order).offset(skip).limit(limit).all()
+    query = db.query(APIRequest).filter(
+    APIRequest.user_id == current_user.id)
+
+    if status_code is not None:
+        query = query.filter(
+            APIRequest.status_code == status_code
+    )
+
+    if method is not None:
+        query = query.filter(
+            APIRequest.method == method
+    )
+
+    if endpoint is not None:
+        query = query.filter(
+            APIRequest.endpoint == endpoint
+    )
+
+    total = query.count()
+
+    requests = query.order_by(order).offset(skip).limit(limit).all()
 
     return {
     "page": page,
