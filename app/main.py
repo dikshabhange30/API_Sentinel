@@ -60,6 +60,17 @@ def create_api_request(
         "message": "API request saved successfully"
     }
 
+@app.get("/api/requests")
+def get_my_api_requests(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    requests = db.query(APIRequest).filter(
+        APIRequest.user_id == current_user.id
+    ).all()
+
+    return requests
+
 @app.post("/users", response_model=UserResponse)
 def create_user(
     user: UserCreate,
