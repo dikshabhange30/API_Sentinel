@@ -52,3 +52,11 @@ class APIAnalyticsResponse(BaseModel):
     health_status: str
     slow_requests: int
 
+class SecurityAlertResponse(BaseModel):
+    failed_login_attempts: int
+    high_request_rate: bool
+    suspicious_ips: list[str]
+    security_status: str
+    requests_last_minute: int
+    security_reasons: list[str]
+

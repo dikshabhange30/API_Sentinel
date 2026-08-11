@@ -4,7 +4,7 @@ from app.oauth2 import create_access_token, get_current_user
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.database import engine, Base, get_db
 from app.models import APIRequest, User
@@ -14,7 +14,8 @@ from app.schemas import (
     APIRequestListResponse,
     APIAnalyticsResponse,
     UserCreate,
-    UserResponse
+    UserResponse,
+    SecurityAlertResponse
     
 )
 from app.auth import hash_password, verify_password
@@ -197,6 +198,83 @@ def get_api_analytics(
         "slow_requests": slow_requests
     }
 
+
+@app.get("/api/security", response_model=SecurityAlertResponse)
+def get_security_alerts(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    now = datetime.utcnow()
+    ten_minutes_ago = now - timedelta(minutes=10)
+
+    recent_requests = db.query(APIRequest).filter(
+        APIRequest.user_id == current_user.id,
+        APIRequest.timestamp >= ten_minutes_ago
+    )
+
+    failed_login_attempts = recent_requests.filter(
+        APIRequest.endpoint == "/login",
+        APIRequest.status_code == 401
+    ).count()
+
+    one_minute_ago = now - timedelta(minutes=1)
+
+    one_minute_requests = db.query(APIRequest).filter(
+        APIRequest.user_id == current_user.id,
+        APIRequest.timestamp >= one_minute_ago
+    ).count()
+
+    high_request_rate = one_minute_requests > 100
+
+    suspicious_ip_rows = db.query(
+        APIRequest.ip_address
+    ).filter(
+        APIRequest.user_id == current_user.id,
+        APIRequest.timestamp >= ten_minutes_ago,
+        APIRequest.status_code >= 400,
+        APIRequest.status_code < 600
+    ).group_by(
+        APIRequest.ip_address
+    ).having(
+        func.count(APIRequest.id) >= 5
+    ).all()
+
+    suspicious_ips = [row[0] for row in suspicious_ip_rows]
+
+    if high_request_rate or suspicious_ips or failed_login_attempts >= 5:
+        security_status = "CRITICAL"
+    elif failed_login_attempts > 0:
+        security_status = "WARNING"
+    else:
+        security_status = "SAFE"
+
+    security_reasons = []
+
+    if failed_login_attempts > 0:
+        security_reasons.append(
+            f"{failed_login_attempts} failed login attempts"
+        )
+
+    if high_request_rate:
+        security_reasons.append(
+            f"High request rate: {one_minute_requests} requests in the last minute"
+    )
+
+    if suspicious_ips:
+        for ip in suspicious_ips:
+            security_reasons.append(
+                f"Suspicious IP detected: {ip}"
+        )
+
+    return {
+        "failed_login_attempts": failed_login_attempts,
+        "high_request_rate": high_request_rate,
+        "suspicious_ips": suspicious_ips,
+        "requests_last_minute": one_minute_requests,
+        "security_status": security_status,
+        "security_reasons": security_reasons
+    }
+    
 
 
 @app.post("/users", response_model=UserResponse)
