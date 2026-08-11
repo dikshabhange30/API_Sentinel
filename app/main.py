@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from app.oauth2 import create_access_token, get_current_user
 
@@ -9,7 +9,7 @@ from app.models import APIRequest, User
 from app.schemas import (
     APIRequestCreate,
     APIRequestResponse,
-    APIRequestData,
+    APIRequestListResponse,
     UserCreate,
     UserResponse
     
@@ -61,16 +61,27 @@ def create_api_request(
         "message": "API request saved successfully"
     }
 
-@app.get("/api/requests", response_model=list[APIRequestData])
+@app.get("/api/requests", response_model=APIRequestListResponse)
 def get_my_api_requests(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    skip = (page - 1) * limit
+
+    total = db.query(APIRequest).filter(APIRequest.user_id == current_user.id).count()
+
     requests = db.query(APIRequest).filter(
         APIRequest.user_id == current_user.id
-    ).all()
+    ).offset(skip).limit(limit).all()
 
-    return requests
+    return {
+    "page": page,
+    "limit": limit,
+    "total": total,
+    "data": requests
+}
 
 @app.post("/users", response_model=UserResponse)
 def create_user(

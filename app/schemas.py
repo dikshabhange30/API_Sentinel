@@ -36,4 +36,9 @@ class APIRequestData(BaseModel):
     status_code: int
     ip_address: str
 
+class APIRequestListResponse(BaseModel):
+    page: int
+    limit: int
+    total: int
+    data: list[APIRequestData]
 
