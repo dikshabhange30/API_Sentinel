@@ -65,6 +65,7 @@ def create_api_request(
 def get_my_api_requests(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
+    sort: str = Query("latest"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -72,9 +73,17 @@ def get_my_api_requests(
 
     total = db.query(APIRequest).filter(APIRequest.user_id == current_user.id).count()
 
-    requests = db.query(APIRequest).filter(
-        APIRequest.user_id == current_user.id
-    ).offset(skip).limit(limit).all()
+    if sort == "latest":
+        order = APIRequest.timestamp.desc()
+    elif sort == "oldest":
+        order = APIRequest.timestamp.asc()
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="sort must be 'latest' or 'oldest'"
+    )
+
+    requests = db.query(APIRequest).filter( APIRequest.user_id == current_user.id).order_by(order).offset(skip).limit(limit).all()
 
     return {
     "page": page,
