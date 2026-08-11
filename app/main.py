@@ -9,6 +9,7 @@ from app.models import APIRequest, User
 from app.schemas import (
     APIRequestCreate,
     APIRequestResponse,
+    APIRequestData,
     UserCreate,
     UserResponse
     
@@ -60,7 +61,7 @@ def create_api_request(
         "message": "API request saved successfully"
     }
 
-@app.get("/api/requests")
+@app.get("/api/requests", response_model=list[APIRequestData])
 def get_my_api_requests(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

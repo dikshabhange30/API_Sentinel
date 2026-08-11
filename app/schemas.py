@@ -26,4 +26,14 @@ class UserResponse(BaseModel):
     email: str
 
 
+class APIRequestData(BaseModel):
+    id: int
+    endpoint: str
+    timestamp: datetime
+    response_time: float
+    method: str
+    user_id: int
+    status_code: int
+    ip_address: str
+
 
