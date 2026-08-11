@@ -4,6 +4,7 @@ from app.oauth2 import create_access_token, get_current_user
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from datetime import datetime
 
 from app.database import engine, Base, get_db
 from app.models import APIRequest, User
@@ -119,12 +120,31 @@ def get_my_api_requests(
 
 @app.get("/api/analytics", response_model=APIAnalyticsResponse)
 def get_api_analytics(
+    from_date: datetime | None = Query(None),
+    to_date: datetime | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
     requests = db.query(APIRequest).filter(
         APIRequest.user_id == current_user.id
     )
+
+    if from_date is not None:
+        requests = requests.filter(
+            APIRequest.timestamp >= from_date
+    )
+
+    if to_date is not None:
+        requests = requests.filter(
+            APIRequest.timestamp <= to_date
+    )
+
+    if from_date is not None and to_date is not None:
+        if from_date > to_date:
+            raise HTTPException(
+                status_code=400,
+                detail="from_date must be before to_date"
+        )
 
     total_requests = requests.count()
 
