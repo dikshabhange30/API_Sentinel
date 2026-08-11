@@ -153,6 +153,11 @@ def get_api_analytics(
         APIRequest.status_code < 300
     ).count()
 
+    if total_requests > 0:
+        success_rate = (successful_requests / total_requests) * 100
+    else:
+        success_rate = 0.0
+
     failed_requests = requests.filter(
         APIRequest.status_code >= 400,
         APIRequest.status_code < 600
@@ -166,7 +171,8 @@ def get_api_analytics(
     "total_requests": total_requests,
     "successful_requests": successful_requests,
     "failed_requests": failed_requests,
-    "average_response_time": average_response_time or 0.0
+    "average_response_time": average_response_time or 0.0,
+    "success_rate": success_rate
     }
 
 
