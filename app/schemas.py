@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Literal
 
 
 class APIRequestCreate(BaseModel):
@@ -35,6 +36,13 @@ class APIRequestData(BaseModel):
     user_id: int
     status_code: int
     ip_address: str
+
+class APIRequestCreate(BaseModel):
+    endpoint: str = Field(min_length=1)
+    response_time: float = Field(ge=0)
+    method: Literal["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+    status_code: int = Field(ge=100, le=599)
+    ip_address: str = Field(min_length=1)
 
 class APIRequestListResponse(BaseModel):
     page: int

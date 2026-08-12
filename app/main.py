@@ -15,7 +15,9 @@ from app.schemas import (
     APIAnalyticsResponse,
     UserCreate,
     UserResponse,
-    SecurityAlertResponse
+    SecurityAlertResponse,
+    APIRequestCreate
+    
     
 )
 from app.auth import hash_password, verify_password
@@ -50,7 +52,7 @@ def create_api_request(
         user_id=current_user.id,
         endpoint=request.endpoint,
         method=request.method,
-        timestamp=request.timestamp,
+        timestamp=datetime.utcnow(),
         status_code=request.status_code,
         response_time=request.response_time,
         ip_address=request.ip_address
